@@ -74,8 +74,20 @@ msgstr "启用 ShadowSocksR Plus+"
 msgid "Passwall Enabled"
 msgstr "启用 Passwall"
 
+msgid "Fill Passwall nodes with top IPs in order"
+msgstr "按测速排名依次填入 Passwall 节点"
+
+msgid "When enabled, selected Passwall nodes are filled one by one with the top IPs from the latest speed test results"
+msgstr "启用后，会将最新测速结果中的前几个 IP 按顺序逐个写入已选择的 Passwall 节点"
+
 msgid "PassWall2 Enabled"
 msgstr "启用 PassWall2"
+
+msgid "Fill Passwall2 nodes with top IPs in order"
+msgstr "按测速排名依次填入 Passwall2 节点"
+
+msgid "When enabled, selected Passwall2 nodes are filled one by one with the top IPs from the latest speed test results"
+msgstr "启用后，会将最新测速结果中的前几个 IP 按顺序逐个写入已选择的 Passwall2 节点"
 
 msgid "Bypass Enabled"
 msgstr "启用 Bypass"

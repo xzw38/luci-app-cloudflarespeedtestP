@@ -27,7 +27,7 @@ echolog() {
 
 function read_config(){
     get_global_config "enabled" "speed_limit" "custom_url" "threads" "custom_cron_enabled" "custom_cron" "t" "tp" "dt" "dn" "dd" "tl" "tll" "ipv6_enabled" "ip_source" "custom_ip_file" "custom_allip" "advanced" "proxy_mode" "github_proxy" "github_proxy_custom" "httping" "cfcolo"
-    get_servers_config "ssr_services" "ssr_enabled" "passwall_enabled" "passwall_services" "passwall2_enabled" "passwall2_services" "bypass_enabled" "bypass_services" "vssr_enabled" "vssr_services" "DNS_enabled" "AliDNS_ip_count" "HOST_enabled" "MosDNS_enabled" "MosDNS_ip_count" "openclash_restart" "AstraDNS_enabled" "AstraDNS_config" "AstraDNS_bin"
+    get_servers_config "ssr_services" "ssr_enabled" "passwall_enabled" "passwall_services" "passwall_sequential_ip" "passwall2_enabled" "passwall2_services" "passwall2_sequential_ip" "bypass_enabled" "bypass_services" "vssr_enabled" "vssr_services" "DNS_enabled" "AliDNS_ip_count" "HOST_enabled" "MosDNS_enabled" "MosDNS_ip_count" "openclash_restart" "AstraDNS_enabled" "AstraDNS_config" "AstraDNS_bin"
 }
 
 function appinit(){
@@ -475,13 +475,34 @@ function astra_dns_ip() {
     fi
 }
 
+function get_result_ip_by_index() {
+    local index="$1"
+    awk -F, -v target="$index" '
+        NR >= 2 && $1 !~ /^#/ && $1 != "" {
+            count++
+            if (count == target) {
+                print $1
+                exit
+            }
+        }
+    ' "$IP_FILE"
+}
+
 function passwall_best_ip(){
     if [ "x${passwall_enabled}" == "x1" ] ;then
         echolog "设置passwall IP"
+        local index=1
         for ssrname in $passwall_services
         do
+            target_ip="${bestip}"
+            if [ "x${passwall_sequential_ip}" == "x1" ] ;then
+                result_ip="$(get_result_ip_by_index "$index")"
+                [ -n "$result_ip" ] && target_ip="$result_ip"
+            fi
             echo $ssrname
-            uci set passwall.$ssrname.address="${bestip}"
+            uci set passwall.$ssrname.address="${target_ip}"
+            echolog "Passwall $ssrname -> $target_ip"
+            index=$((index + 1))
         done
         uci commit passwall
     fi
@@ -490,10 +511,18 @@ function passwall_best_ip(){
 function passwall2_best_ip(){
     if [ "x${passwall2_enabled}" == "x1" ] ;then
         echolog "设置passwall2 IP"
+        local index=1
         for ssrname in $passwall2_services
         do
+            target_ip="${bestip}"
+            if [ "x${passwall2_sequential_ip}" == "x1" ] ;then
+                result_ip="$(get_result_ip_by_index "$index")"
+                [ -n "$result_ip" ] && target_ip="$result_ip"
+            fi
             echo $ssrname
-            uci set passwall2.$ssrname.address="${bestip}"
+            uci set passwall2.$ssrname.address="${target_ip}"
+            echolog "Passwall2 $ssrname -> $target_ip"
+            index=$((index + 1))
         done
         uci commit passwall2
     fi

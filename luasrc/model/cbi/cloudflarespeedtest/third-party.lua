@@ -51,6 +51,12 @@ if nixio.fs.access("/etc/config/passwall") then
 	o=s:taboption("passwalltab", Flag, "passwall_enabled",translate("Passwall Enabled"))
 	o.rmempty=true
 
+	o=s:taboption("passwalltab", Flag, "passwall_sequential_ip",translate("Fill Passwall nodes with top IPs in order"))
+	o.description = translate("When enabled, selected Passwall nodes are filled one by one with the top IPs from the latest speed test results")
+	o.default = 0
+	o.rmempty = false
+	o:depends("passwall_enabled", 1)
+
 	local passwall_server_table = {}
 	uci:foreach("passwall", "nodes", function(s)
 		if s.remarks then
@@ -82,6 +88,12 @@ if nixio.fs.access("/etc/config/passwall2") then
 
 	o=s:taboption("passwall2tab", Flag, "passwall2_enabled",translate("PassWall2 Enabled"))
 	o.rmempty=true
+
+	o=s:taboption("passwall2tab", Flag, "passwall2_sequential_ip",translate("Fill Passwall2 nodes with top IPs in order"))
+	o.description = translate("When enabled, selected Passwall2 nodes are filled one by one with the top IPs from the latest speed test results")
+	o.default = 0
+	o.rmempty = false
+	o:depends("passwall2_enabled", 1)
 
 	local passwall2_server_table = {}
 	uci:foreach("passwall2", "nodes", function(s)
