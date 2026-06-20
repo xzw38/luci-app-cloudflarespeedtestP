@@ -17,6 +17,14 @@ This project is a fork of [mingxiaoyu/luci-app-cloudflarespeedtest](https://gith
 *   **Auto Core Download**: The package does not contain the core binary; it downloads automatically on the first run, reducing the package size.
 *   **Improved UI & Logs**: Redesigned status display and log format for better readability.
 
+## Fork Additions
+
+This fork keeps the original behavior by default and adds an optional Passwall/Passwall2 sequential IP assignment mode.
+
+*   **Sequential Passwall IP Assignment**: When enabled in Third Party Settings, selected Passwall or Passwall2 nodes are filled one by one with the top IPs from the latest speed test results. For example, the 1st selected node receives the 1st-ranked IP, the 2nd selected node receives the 2nd-ranked IP, and so on.
+*   **Backward Compatible**: The new option is disabled by default. If it is not enabled, the plugin still writes the single best IP to all selected nodes, exactly like the original behavior.
+*   **Tip for More Nodes**: If you want to fill more than five nodes with different IPs, enable Advanced settings and increase "Number of download speed tests" so CloudflareSpeedTest outputs enough ranked IPs.
+
 ## Installation
 
 1.  Download the latest `.ipk` or `.apk` file from [Releases](https://github.com/stevenjoezhang/luci-app-cloudflarespeedtest/releases).
