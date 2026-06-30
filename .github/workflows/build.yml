@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir -p /tmp/SNAPSDK
           curl -SLk --connect-timeout 30 --retry 2 \
-            "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst" \
+            "https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.4.0_musl.Linux-x86_64.tar.zst" \
             -o /tmp/SNAPSDK.tar.zst
           zstd -d /tmp/SNAPSDK.tar.zst
           tar xf /tmp/SNAPSDK.tar --strip-components=1 -C /tmp/SNAPSDK
