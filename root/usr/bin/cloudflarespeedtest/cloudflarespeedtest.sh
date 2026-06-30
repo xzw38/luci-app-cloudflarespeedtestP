@@ -1,7 +1,8 @@
 #!/bin/sh
 
 LOG_FILE='/tmp/cloudflarespeedtest.log'
-IP_FILE='/usr/share/CloudflareSpeedTest/result.csv'
+RESULT_DIR='/tmp/CloudflareSpeedTest'
+IP_FILE="$RESULT_DIR/result.csv"
 IPV4_TXT='/usr/share/CloudflareSpeedTest/ip.txt'
 IPV6_TXT='/usr/share/CloudflareSpeedTest/ipv6.txt'
 
@@ -171,7 +172,7 @@ function download_core() {
         exit 1
     fi
 
-    # Decompress .tar.gz to .tar, run lua patch on the .tar, then extract the .tar
+    # Decompress .tar.gz to .tar, run ucode patch on the .tar, then extract the .tar
     gzfile="/tmp/${link##*/}"
     tarfile="${gzfile%.gz}"
 
@@ -180,9 +181,9 @@ function download_core() {
         gzip -d "$gzfile" || (echo "Failed to decompress $gzfile" && exit 1)
     fi
 
-    # If original was gz (now we have a .tar), run patch.lua on the tar then extract it
+    # If original was gz (now we have a .tar), run patch.uc on the tar then extract it
     if [ "${gzfile##*.}" = "gz" ]; then
-        lua /usr/bin/cloudflarespeedtest/patch.lua "$tarfile"
+        ucode /usr/bin/cloudflarespeedtest/patch.uc "$tarfile"
         tar -xf "$tarfile" -C "/tmp/"
         if [ ! -e "/tmp/cfst" ]; then
             echo "Failed to extract core from archive."
@@ -211,6 +212,10 @@ function rotate_result_files(){
         # 将当前的result.csv重命名为result.csv.1
         mv "$IP_FILE" "${IP_FILE}.1"
     fi
+}
+
+function first_result_ip(){
+    sed -n '2,$p' "$1" 2>/dev/null | grep -v '^#' | awk -F, 'NF >= 7 && $1 != "" { print $1; exit }'
 }
 
 function select_ip_file(){
@@ -244,7 +249,8 @@ function select_ip_file(){
 }
 
 function count_words() {
-    echo "$*" | wc -w
+    set -- $*
+    echo "$#"
 }
 
 function get_required_download_count() {
@@ -267,15 +273,17 @@ function get_required_download_count() {
 function speed_test(){
 
     rm -rf $LOG_FILE
+    mkdir -p "$RESULT_DIR"
+    result_tmp="$(mktemp "${RESULT_DIR}/result.csv.tmp.XXXXXX")" || {
+        echolog "创建临时测速结果文件失败"
+        return 1
+    }
 
     if [ ! -e /usr/bin/cdnspeedtest ]; then
         download_core >>$LOG_FILE
     fi
 
-    # 执行滚动保存
-    rotate_result_files
-
-    command="/usr/bin/cdnspeedtest -sl ${speed_limit} -url ${custom_url} -o ${IP_FILE}"
+    command="/usr/bin/cdnspeedtest -sl ${speed_limit} -url ${custom_url} -o ${result_tmp}"
 
     selected_ip_file="$(select_ip_file)"
     command="${command} -f ${selected_ip_file}"
@@ -399,15 +407,31 @@ function speed_test(){
     echo $command >> $LOG_FILE 2>&1
     echolog "-----------start----------"
     $command >> $LOG_FILE 2>&1
+    command_rc=$?
     echolog "-----------end------------"
-    # Append current time to IP_FILE
-    echo "# Speed test time: $(date +'%Y-%m-%d %H:%M:%S')" >> $IP_FILE
+
+    if [ $command_rc -ne 0 ]; then
+        echolog "CloudflareST 测速失败，保留上一次结果"
+        rm -f "$result_tmp"
+        return $command_rc
+    fi
+
+    if [ -z "$(first_result_ip "$result_tmp")" ]; then
+        echolog "CloudflareST 测速结果 IP 数量为 0，保留上一次结果"
+        rm -f "$result_tmp"
+        return 1
+    fi
+
+    # Append current time to the validated result, then rotate old results.
+    echo "# Speed test time: $(date +'%Y-%m-%d %H:%M:%S')" >> "$result_tmp"
+    rotate_result_files
+    mv -f "$result_tmp" "$IP_FILE"
 }
 
 function ip_replace(){
 
     # 获取最快 IP（从 result.csv 结果文件中获取第一个 IP）
-    bestip=$(sed -n "2,1p" $IP_FILE | awk -F, '{print $1}')
+    bestip=$(first_result_ip "$IP_FILE")
     if [[ -z "${bestip}" ]]; then
         echolog "CloudflareST 测速结果 IP 数量为 0,跳过下面步骤..."
     else
