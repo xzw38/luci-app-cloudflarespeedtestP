@@ -243,6 +243,27 @@ function select_ip_file(){
     esac
 }
 
+function count_words() {
+    echo "$*" | wc -w
+}
+
+function get_required_download_count() {
+    local required=5
+    local count
+
+    if [ "x${passwall_enabled}" == "x1" ] && [ "x${passwall_sequential_ip}" == "x1" ]; then
+        count="$(count_words $passwall_services)"
+        [ "$count" -gt "$required" ] && required="$count"
+    fi
+
+    if [ "x${passwall2_enabled}" == "x1" ] && [ "x${passwall2_sequential_ip}" == "x1" ]; then
+        count="$(count_words $passwall2_services)"
+        [ "$count" -gt "$required" ] && required="$count"
+    fi
+
+    echo "$required"
+}
+
 function speed_test(){
 
     rm -rf $LOG_FILE
@@ -263,8 +284,18 @@ function speed_test(){
         command="${command} -allip"
     fi
 
+    required_dn="$(get_required_download_count)"
+    effective_dn="${dn:-5}"
+    case "$effective_dn" in
+        ''|*[!0-9]*) effective_dn=5 ;;
+    esac
+    if [ "$required_dn" -gt "$effective_dn" ]; then
+        effective_dn="$required_dn"
+        echolog "Sequential Passwall assignment requires at least $effective_dn ranked IP(s); using -dn $effective_dn"
+    fi
+
     if [ $advanced -eq "1" ] ; then
-        command="${command} -tl ${tl} -tll ${tll} -n ${threads} -t ${t} -dt ${dt} -dn ${dn}"
+        command="${command} -tl ${tl} -tll ${tll} -n ${threads} -t ${t} -dt ${dt} -dn ${effective_dn}"
         if [ $dd -eq "1" ] ; then
             command="${command} -dd"
         fi
@@ -279,7 +310,7 @@ function speed_test(){
         fi
     else
         # Default param: -tl 200 -tll 40 -n 200 -t 4 -dt 10
-        command="${command} -dn 5"
+        command="${command} -dn ${effective_dn}"
     fi
 
     appinit
@@ -497,7 +528,12 @@ function passwall_best_ip(){
             target_ip="${bestip}"
             if [ "x${passwall_sequential_ip}" == "x1" ] ;then
                 result_ip="$(get_result_ip_by_index "$index")"
-                [ -n "$result_ip" ] && target_ip="$result_ip"
+                if [ -z "$result_ip" ]; then
+                    echolog "Passwall $ssrname skipped: no ranked IP available for position $index"
+                    index=$((index + 1))
+                    continue
+                fi
+                target_ip="$result_ip"
             fi
             echo $ssrname
             uci set passwall.$ssrname.address="${target_ip}"
@@ -517,7 +553,12 @@ function passwall2_best_ip(){
             target_ip="${bestip}"
             if [ "x${passwall2_sequential_ip}" == "x1" ] ;then
                 result_ip="$(get_result_ip_by_index "$index")"
-                [ -n "$result_ip" ] && target_ip="$result_ip"
+                if [ -z "$result_ip" ]; then
+                    echolog "Passwall2 $ssrname skipped: no ranked IP available for position $index"
+                    index=$((index + 1))
+                    continue
+                fi
+                target_ip="$result_ip"
             fi
             echo $ssrname
             uci set passwall2.$ssrname.address="${target_ip}"
